@@ -52,10 +52,13 @@ export const login = async (request, response, next) => {
       return response.status(400).send("Password is incorrect.");
     }
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     response.cookie("jwt", createToken(email, user.id), {
       maxAge,
-      secure: true,
-      sameSite: "None",
+      httpOnly: true,
+      secure: isProduction, // ✅ false in dev, true in prod
+      sameSite: isProduction ? "None" : "Lax", // ✅ Lax in dev to allow cookies
     });
     return response.status(200).json({
       user: {
@@ -66,6 +69,30 @@ export const login = async (request, response, next) => {
         lastName: user.lastName,
         image: user.image,
         color: user.color,
+      },
+    });
+  } catch (error) {
+    console.log({ error });
+    return response.status(500).send("Internal Server Error");
+  }
+};
+
+export const getUserInfo = async (request, response, next) => {
+  try {
+    const userData = await User.findById(request.userId);
+    if (!userData) {
+      return response.status(404).send("User with the given ID not found.");
+    }
+
+    return response.status(200).json({
+      user: {
+        id: userData.id,
+        email: userData.email,
+        profileSetup: userData.profileSetup,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        image: userData.image,
+        color: userData.color,
       },
     });
   } catch (error) {
